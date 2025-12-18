@@ -24,4 +24,4 @@ jobs:
 
       - name: Sync site to S3
         run: |
-          aws s3 sync site/ s3://my-portfolio-bucket --delete
+          aws s3 sync site/ s3://static-by-terraform --delete

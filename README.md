@@ -30,5 +30,9 @@ terraform init
 
 terraform apply -var="github\_repo=<owner>/<repo>" -var="s3\_bucket\_name=<bucket\_name>" -auto-approve
 
+====================================
+
+Store the Role ARN from Terraform output in GitHub Repository Secret OIDC_ROLE_ARN.
+
 
 

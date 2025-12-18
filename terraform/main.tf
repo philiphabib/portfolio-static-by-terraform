@@ -42,10 +42,10 @@ resource "aws_s3_bucket" "site_bucket" {
 resource "aws_s3_bucket_public_access_block" "site" {
   bucket = aws_s3_bucket.site_bucket.id
 
-  block_public_acls       = false
-  block_public_policy     = false
-  ignore_public_acls      = false
-  restrict_public_buckets = false
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
 }
 
 resource "aws_s3_bucket_website_configuration" "site" {
@@ -67,16 +67,23 @@ resource "aws_s3_bucket_policy" "site_policy" {
     Version = "2012-10-17",
     Statement = [
       {
-        Effect    = "Allow",
-        Principal = "*",
-        Action    = "s3:GetObject",
-        Resource  = "${aws_s3_bucket.site_bucket.arn}/*"
+        Sid = "AllowCloudFrontOnly",
+        Effect = "Allow",
+        Principal = {
+          Service = "cloudfront.amazonaws.com"
+        },
+        Action   = "s3:GetObject",
+        Resource = "${aws_s3_bucket.site_bucket.arn}/*",
+        Condition = {
+          StringEquals = {
+            "AWS:SourceArn" = aws_cloudfront_distribution.cdn.arn
+          }
+        }
       }
     ]
   })
-
-  depends_on = [aws_s3_bucket_public_access_block.site]
 }
+
 
 # IAM Policy for GitHub Actions
 resource "aws_iam_policy" "github_s3_policy" {
@@ -106,5 +113,50 @@ resource "aws_iam_role_policy_attachment" "attach_policy" {
   role       = aws_iam_role.github_oidc_role.name
   policy_arn = aws_iam_policy.github_s3_policy.arn
 }
+
+resource "aws_cloudfront_origin_access_control" "oac" {
+  name                              = "s3-oac-${var.s3_bucket_name}"
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+
+
+resource "aws_cloudfront_distribution" "cdn" {
+  enabled             = true
+  default_root_object = "index.html"
+
+  origin {
+    domain_name              = aws_s3_bucket.site_bucket.bucket_regional_domain_name
+    origin_id                = "s3-origin"
+    origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
+  }
+
+  default_cache_behavior {
+    target_origin_id       = "s3-origin"
+    viewer_protocol_policy = "redirect-to-https"
+
+    allowed_methods = ["GET", "HEAD"]
+    cached_methods  = ["GET", "HEAD"]
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+  }
+
+  restrictions {
+    geo_restriction {
+      restriction_type = "none"
+    }
+  }
+
+  viewer_certificate {
+    cloudfront_default_certificate = true
+  }
+}
+
 
 

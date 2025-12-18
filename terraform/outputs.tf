@@ -7,6 +7,11 @@ output "s3_bucket_url" {
 }
 
 
+
+output "cloudfront_url" {
+  value = "https://${aws_cloudfront_distribution.cdn.domain_name}"
+}
+
 output "github_role_arn" {
   value = aws_iam_role.github_oidc_role.arn
 }

@@ -12,3 +12,9 @@ variable "s3_bucket_name" {
   type = string
   description = "S3 bucket for static site"
 }
+
+
+variable "route53_zone_id" {
+  description = "Route53 Hosted Zone ID for philip-portfolio.com"
+  type        = string
+}
